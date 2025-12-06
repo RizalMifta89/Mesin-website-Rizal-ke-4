@@ -1,38 +1,25 @@
-from fastapi import FastAPI, Query
-from fastapi.responses import RedirectResponse
-from pydantic import HttpUrl
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from downloader import download_douyin
 import asyncio
-from downloader import analyze_douyin
 
-app = FastAPI(title="Douyin Downloader API by Rizal")
+limiter = Limiter(key_func=get_remote_address)
+app = FastAPI(title="Douyin Downloader API by Rizal", docs_url="/docs")
+
+app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)
 
 @app.get("/")
-async def home():
-    return {"message": "Douyin Downloader API siap!"}
-
-@app.get("/analyze")
-async def analyze(url: str = Query(...)):
-    try:
-        info = await analyze_douyin(url)
-        return info
-    except Exception as e:
-        return {"error": str(e)}
+async def root():
+    return {"message": "Douyin Downloader API aktif! Gunakan /download?url="}
 
 @app.get("/download")
-async def download(url: str = Query(...), type: str = "nowm"):
+@limiter.limit("30/minute")  # anti spam + anti block
+async def download(url: str):
     try:
-        info = await analyze_douyin(url)
-        
-        if type == "nowm" and info["no_watermark"]:
-            return RedirectResponse(info["no_watermark"])
-        elif type == "raw" and info["raw"]:
-            return RedirectResponse(info["raw"])
-        elif type == "nowm_sd" and info["no_watermark_sd"]:
-_ByPass
-            return RedirectResponse(info["no_watermark_sd"])
-        elif type == "music":
-            return RedirectResponse(info["music"])
-        else:
-            return {"error": "Link untuk tipe ini tidak tersedia"}
+        data = await download_douyin(url)
+        return JSONResponse(content=data)
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=400, detail=str(e))
