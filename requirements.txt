@@ -1,12 +1,8 @@
 fastapi
-uvicorn[standard]
-httpx[http2]
+uvicorn
+httpx
 pydantic
-python-multipart
-cloudscraper
 fake-useragent
-tls-client
-curl-cffi
-undetected-chromedriver  # kalau mau pakai headless chrome (opsional)
-python-dotenv
-slowapi  # rate limit biar ga kena block
+tenacity
+beautifulsoup4
+lxml
